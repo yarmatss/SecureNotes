@@ -5,8 +5,15 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-SecureNotes.Web-3c1fea1c-bdf1-4bf3-b97c-d132e1cf8087</UserSecretsId>
+	<ResolveStaticWebAssetsInputsDependsOn>RemoveIdentityAssets</ResolveStaticWebAssetsInputsDependsOn>
   </PropertyGroup>
 
+    <Target Name="RemoveIdentityAssets">
+	    <ItemGroup>
+		    <StaticWebAsset Remove="@(StaticWebAsset)" Condition="%(SourceId) == 'Microsoft.AspNetCore.Identity.UI'" />
+	    </ItemGroup>
+    </Target>
+	
   <ItemGroup>
     <PackageReference Include="HtmlSanitizer" Version="8.1.870" />
     <PackageReference Include="Markdig" Version="0.40.0" />
