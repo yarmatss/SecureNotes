@@ -1,0 +1,131 @@
+﻿@page
+@model CreateModel
+@{
+    ViewData["Title"] = "Create note";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/lib/simplemde/simplemde.min.css" />
+    <link rel="stylesheet" href="~/lib/fontawesome/css/font-awesome.min.css" />
+}
+
+<h1>Create note</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group">
+                <label asp-for="Note.Title" class="control-label"></label>
+                <input asp-for="Note.Title" class="form-control" />
+                <span asp-validation-for="Note.Title" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Note.Content" class="control-label"></label>
+                <textarea id="markdown-editor" asp-for="Note.Content" class="form-control"></textarea>
+                <small class="form-text text-muted">
+                    Supported formatting:
+                    <strong>**bold**</strong>,
+                    <em>*italic*</em>,
+                    # Headers,
+                    [Links](url),
+                    ![Images](url)
+                </small>
+                <span asp-validation-for="Note.Content" class="text-danger"></span>
+            </div>
+
+            <div class="form-group form-check">
+                <label class="form-check-label">
+                    <input class="form-check-input" asp-for="Note.IsEncrypted" /> Encrypt note
+                </label>
+            </div>
+
+            <div class="form-group" id="passwordGroup" style="display:none;">
+                <label asp-for="Note.CurrentPassword" class="control-label">Encryption password</label>
+                <input asp-for="Note.CurrentPassword" type="password" class="form-control" />
+                <div id="passwordStrength"></div>
+                <span asp-validation-for="Note.CurrentPassword" class="text-danger"></span>
+                <small class="form-text text-muted">
+                    Password must have at least 12 characters and contain 3 of 4: capital letters, small letters, digits, special characters
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Note.AccessLevel" class="control-label">Access level</label>
+                <select asp-for="Note.AccessLevel" asp-items="Html.GetEnumSelectList<NoteAccessLevel>()" class="form-control"></select>
+                <span asp-validation-for="Note.AccessLevel" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mt-3">
+                <input type="submit" value="Create" class="btn btn-primary" />
+                <a asp-page="MyNotes" class="btn btn-secondary">Back to list</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/lib/simplemde/simplemde.min.js"></script>
+    <script src="~/js/password-validation.js"></script>
+    <script>
+        $(function () {
+            const passwordInput = $('#Note_CurrentPassword');
+            const strengthDiv = $('#passwordStrength');
+
+            passwordInput.on('input', function() {
+                updatePasswordStrength(this.value, strengthDiv[0]);
+            });
+
+            $('#Note_IsEncrypted').change(function () {
+                $('#passwordGroup').toggle(this.checked);
+                if (!this.checked) {
+                    passwordInput.val('');
+                    strengthDiv.text('');
+                }
+            });
+        });
+
+        // SimpleMDE
+
+        const headingLevels = {
+            h1: { text: "H1", prefix: "# " },
+            h2: { text: "H2", prefix: "## " },
+            h3: { text: "H3", prefix: "### " },
+            h4: { text: "H4", prefix: "#### " },
+            h5: { text: "H5", prefix: "##### " }
+        };
+
+        function createHeadingAction(level) {
+            return {
+                name: level,
+                action: (editor) => {
+                    var cm = editor.codemirror;
+                    var text = cm.getSelection();
+                    cm.replaceSelection(headingLevels[level].prefix + text);
+                },
+                className: "fa fa-header",
+                title: `Heading ${headingLevels[level].text}`
+            };
+        }
+
+        var simplemde = new SimpleMDE({
+            element: document.getElementById("markdown-editor"),
+            autoDownloadFontAwesome: false,
+            spellChecker: false,
+            toolbar: [
+                "bold", "italic", "|",
+                createHeadingAction("h1"),
+                createHeadingAction("h2"),
+                createHeadingAction("h3"),
+                createHeadingAction("h4"),
+                createHeadingAction("h5"),
+                "|",
+                "link", "image", "|",
+                "preview", "side-by-side", "fullscreen"
+            ]
+        });
+    </script>
+}

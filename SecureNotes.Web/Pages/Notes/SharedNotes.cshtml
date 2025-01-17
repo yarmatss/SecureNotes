@@ -1,0 +1,32 @@
+﻿@page
+@model SharedNotesModel
+@{
+    ViewData["Title"] = "Shared notes";
+}
+
+<h2>Shared with me</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Author</th>
+            <th>Created at</th>
+            <th>Encrypted</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var note in Model.Notes)
+        {
+            <tr>
+                <td>@note.Title</td>
+                <td>@note.Author.UserName</td>
+                <td>@note.CreatedAt.ToLocalTime()</td>
+                <td>@(note.IsEncrypted ? "Yes" : "No")</td>
+                <td>
+                    <a asp-page="./Details" asp-route-id="@note.Id">View</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

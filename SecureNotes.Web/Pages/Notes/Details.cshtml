@@ -1,0 +1,97 @@
+﻿@page
+@model DetailsModel
+@{
+    ViewData["Title"] = "Note details";
+}
+
+<h1>Note details</h1>
+
+<div>
+    <h4>@Model.Note?.Title</h4>
+    <hr />
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    @if (Model.Note?.IsEncrypted == true && !Model.IsDecrypted)
+    {
+        <form method="post" asp-page-handler="Decrypt" asp-route-id="@Model.Note?.Id">
+            <div class="form-group">
+                <label asp-for="DecryptionPassword">Password to decrypt:</label>
+                <input type="password" class="form-control" asp-for="DecryptionPassword" />
+                <span asp-validation-for="DecryptionPassword" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-primary mt-2">Decrypt</button>
+        </form>
+    }
+    else
+    {
+        <div class="note-content">
+            @Html.Raw(Model.Note?.Content)
+        </div>
+    }
+
+    <dl class="row mt-3">
+        <dt class="col-sm-2">Created at</dt>
+        <dd class="col-sm-10">@Model.Note?.CreatedAt.ToLocalTime()</dd>
+
+        <dt class="col-sm-2">Modified at</dt>
+        <dd class="col-sm-10">@(Model.Note?.ModifiedAt?.ToLocalTime())</dd>
+
+        <dt class="col-sm-2">Author</dt>
+        <dd class="col-sm-10">@Model.Note?.Author.UserName</dd>
+
+        <dt class="col-sm-2">Access level</dt>
+        <dd class="col-sm-10">@Model.Note?.AccessLevel</dd>
+    </dl>
+</div>
+
+<div>
+    @if (Model.Note?.AuthorId == User.FindFirstValue(ClaimTypes.NameIdentifier))
+    {
+        <a asp-page="./Edit" asp-route-id="@Model.Note?.Id" class="btn btn-primary">Edit</a>
+        @if (Model.CanBeShared)
+        {
+            <a asp-page="./Share" asp-route-id="@Model.Note?.Id" class="btn btn-info">Share</a>
+        }
+        <button type="button" class="btn btn-danger"
+                onclick="showDeleteModal(@Model.Note?.Id, '@Model.Note?.Title')">
+            Delete
+        </button>
+    }
+    <a asp-page="./MyNotes" class="btn btn-secondary">Back to List</a>
+</div>
+
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Note</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete note "<span id="deleteNoteTitle"></span>"?
+            </div>
+            <div class="modal-footer">
+                <form method="post" id="deleteForm" asp-page-handler="Delete">
+                    <input type="hidden" id="deleteNoteId" name="id" />
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function showDeleteModal(id, title) {
+            document.getElementById('deleteNoteId').value = id;
+            document.getElementById('deleteNoteTitle').textContent = title;
+            new bootstrap.Modal(document.getElementById('deleteModal')).show();
+        }
+    </script>
+}

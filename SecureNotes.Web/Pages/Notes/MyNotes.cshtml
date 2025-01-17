@@ -1,0 +1,86 @@
+﻿@page
+@model MyNotesModel
+@{
+    ViewData["Title"] = "My notes";
+}
+
+@if (!string.IsNullOrEmpty(Model.StatusMessage))
+{
+    <div class="alert alert-info alert-dismissible" role="alert">
+        @Model.StatusMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<p>
+    <a asp-page="Create" class="btn btn-primary">Create new note</a>
+</p>
+
+<h2>My notes</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Created</th>
+            <th>Modified at</th>
+            <th>Encrypted</th>
+            <th>Access level</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.Notes)
+        {
+            <tr>
+                <td>@item.Title</td>
+                <td>@item.CreatedAt.ToLocalTime()</td>
+                <td>@(item.ModifiedAt?.ToLocalTime())</td>
+                <td>@(item.IsEncrypted ? "Yes" : "No")</td>
+                <td>@item.AccessLevel</td>
+                <td>
+                    <a asp-page="./Details" asp-route-id="@item.Id">View</a> |
+                    <a asp-page="./Edit" asp-route-id="@item.Id">Edit</a> |
+                    @if (item.AccessLevel == NoteAccessLevel.Shared)
+                    {
+                        <text><a asp-page="./Share" asp-route-id="@item.Id">Share</a> |</text>
+                    }
+                    <button type="button" class="btn btn-link text-danger p-0 align-baseline"
+                            onclick="showDeleteModal(@item.Id, '@item.Title')">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete note</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete note "<span id="deleteNoteTitle"></span>"?
+            </div>
+            <div class="modal-footer">
+                <form method="post" id="deleteForm" asp-page-handler="Delete">
+                    <input type="hidden" id="deleteNoteId" name="id" />
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function showDeleteModal(id, title) {
+            document.getElementById('deleteNoteId').value = id;
+            document.getElementById('deleteNoteTitle').textContent = title;
+            new bootstrap.Modal(document.getElementById('deleteModal')).show();
+        }
+    </script>
+}
