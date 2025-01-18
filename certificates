@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Utworzenie katalogu na certyfikaty
+mkdir -p certs
+
+# Generowanie Root CA
+openssl req -x509 -sha256 -days 365 -nodes \
+  -newkey rsa:2048 \
+  -subj "/CN=SecureNotes Root CA/O=SecureNotes/C=PL" \
+  -keyout certs/rootCA.key -out certs/rootCA.crt
+
+# Generowanie certyfikatu dla webapp
+openssl req -new -nodes \
+  -newkey rsa:2048 \
+  -subj "/CN=webapp/O=SecureNotes/C=PL" \
+  -keyout certs/webapp.key -out certs/webapp.csr
+
+# Podpisanie certyfikatu przez Root CA
+openssl x509 -req -sha256 -days 365 \
+  -in certs/webapp.csr \
+  -CA certs/rootCA.crt -CAkey certs/rootCA.key -CAcreateserial \
+  -out certs/webapp.crt
+
+# Łączenie certyfikatu z CA chain
+cat certs/webapp.crt certs/rootCA.crt > certs/webapp.chained.crt
+
+# Generowanie PFX dla ASP.NET Core
+openssl pkcs12 -export \
+  -inkey certs/webapp.key \
+  -in certs/webapp.chained.crt \
+  -out certs/webapp.pfx \
+  -password pass:SecureNotes_228

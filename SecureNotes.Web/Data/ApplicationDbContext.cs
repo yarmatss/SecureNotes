@@ -39,7 +39,6 @@ public class ApplicationDbContext : IdentityDbContext<User>
                   .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // Indeksy
         builder.Entity<Note>()
                .HasIndex(n => n.AuthorId);
 
