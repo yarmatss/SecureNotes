@@ -1,5 +1,8 @@
 using Ganss.Xss;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.EntityFrameworkCore;
 using SecureNotes.Web.Data;
 using SecureNotes.Web.Models;
@@ -7,6 +10,7 @@ using SecureNotes.Web.Services;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.RateLimiting;
 
 Log.Logger = new LoggerConfiguration()
@@ -26,11 +30,47 @@ try
     var builder = WebApplication.CreateBuilder(args);
     builder.Host.UseSerilog();
 
+    builder.WebHost.ConfigureKestrel(serverOptions =>
+    {
+        serverOptions.ListenAnyIP(443, listenOptions =>
+        {
+            listenOptions.UseHttps(options =>
+            {
+                options.ServerCertificateSelector = (context, name) =>
+                {
+                    return new X509Certificate2("/app/certs/webapp.pfx", "SecureNotes_228");
+                };
+            });
+        });
+    });
+
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo("/app/keys"))
+        .SetApplicationName("SecureNotes");
+
+    var dockerNetworkSubnet = Environment.GetEnvironmentVariable("DOCKER_NETWORK_SUBNET");
+    if (!string.IsNullOrEmpty(dockerNetworkSubnet))
+    {
+        var subnetParts = dockerNetworkSubnet.Split('/');
+        var ipAddress = System.Net.IPAddress.Parse(subnetParts[0]);
+        var prefixLength = int.Parse(subnetParts[1]);
+
+        builder.Services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+            options.KnownNetworks.Clear();
+            options.KnownProxies.Clear();
+
+            options.KnownNetworks.Add(new IPNetwork(ipAddress, prefixLength));
+        });
+    }
+
     // Add services to the container.
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseSqlServer(connectionString));
-    builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+    options.UseSqlServer(connectionString, sqlServerOptions =>
+        sqlServerOptions.EnableRetryOnFailure()));
 
     builder.Services.AddDefaultIdentity<User>(options => {
         options.SignIn.RequireConfirmedAccount = false;
@@ -102,54 +142,51 @@ try
 
     var app = builder.Build();
 
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        if (dbContext.Database.GetPendingMigrations().Any())
+        {
+            dbContext.Database.Migrate();
+        }
+    }
+
     // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
     {
         app.UseMigrationsEndPoint();
-        app.Use(async (context, next) =>
-        {
-            context.Response.Headers.Append(
-                "Content-Security-Policy",
-                "default-src 'self'; " +
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-                "style-src 'self' 'unsafe-inline'; " +
-                "img-src 'self' https: data:; " +
-                "font-src 'self' data:; " +
-                "connect-src 'self' ws://localhost:* wss://localhost:* http://localhost:* https://localhost:*; " +
-                "frame-src 'none'; " +
-                "object-src 'none'; " +
-                "base-uri 'self';"
-            );
-            await next();
-        });
     }
     else
     {
         app.UseExceptionHandler("/Error");
-        app.Use(async (context, next) =>
-        {
-            context.Response.Headers.Append(
-                "Content-Security-Policy",
-                "default-src 'self'; " +
-                "script-src 'self' 'unsafe-inline'; " +
-                "style-src 'self' 'unsafe-inline'; " +
-                "img-src 'self' https: data:; " +
-                "font-src 'self' data:; " +
-                "connect-src 'self'; " +
-                "frame-src 'none'; " +
-                "object-src 'none'; " +
-                "base-uri 'self'; " +
-                "upgrade-insecure-requests;"
-            );
-            await next();
-        });
+
         // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
         app.UseHsts();
     }
 
+    // Content-Security-Policy
+    app.Use(async (context, next) =>
+    {
+        context.Response.Headers.Append(
+            "Content-Security-Policy",
+            "default-src 'self'; " +
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+            "style-src 'self' 'unsafe-inline'; " +
+            "img-src 'self' https: data:; " +
+            "font-src 'self' data:; " +
+            "connect-src 'self'; " +
+            "frame-src 'none'; " +
+            "object-src 'none'; " +
+            "base-uri 'self'; " +
+            "upgrade-insecure-requests;"
+        );
+        await next();
+    });
+
     app.UseHttpsRedirection();
 
     app.UseRouting();
+    app.UseForwardedHeaders();
 
     app.UseAuthentication();
     app.UseAuthorization();
