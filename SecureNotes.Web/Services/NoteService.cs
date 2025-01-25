@@ -49,7 +49,6 @@ public class NoteService : INoteService
                 AccessLevel = noteDto.AccessLevel
             };
 
-            // Pobierz token do podpisywania zamiast używać hasła notatki
             var signingToken = await _userManager.GetAuthenticationTokenAsync(
                 user, "SecureNotes", "SigningToken");
 
@@ -76,7 +75,6 @@ public class NoteService : INoteService
             else
             {
                 note.Content = noteDto.Content;
-                // Podpis na oryginalnej treści
                 note.Signature = await _signingService.SignAsync(
                     noteDto.Content,
                     user.EncryptedSigningPrivateKey!,
@@ -222,7 +220,6 @@ public class NoteService : INoteService
             if (string.IsNullOrEmpty(noteDto.CurrentPassword))
                 throw new ArgumentException("Note password is required");
 
-            // Verify note password by trying to decrypt
             var decrypted = await _encryptionService.DecryptAsync(
                 note.EncryptedContent!,
                 note.InitVector!,
@@ -240,7 +237,6 @@ public class NoteService : INoteService
             note.Salt = result.salt;
             note.Content = string.Empty;
 
-            // Podpis na zaszyfrowanej treści
             var signingToken = await _userManager.GetAuthenticationTokenAsync(
                 user, "SecureNotes", "SigningToken");
 
@@ -323,7 +319,6 @@ public class NoteService : INoteService
         {
             try
             {
-                // Verify password by attempting decryption
                 var decrypted = await _encryptionService.DecryptAsync(
                     note.EncryptedContent!,
                     note.InitVector!,

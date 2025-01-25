@@ -85,7 +85,6 @@ public class ShareModel : PageModel
     {
         var userId = _userManager.GetUserId(User);
 
-        // Sprawdü czy notatka istnieje
         var note = await _noteService.GetAsync(noteId, userId!);
         if (note == null)
             return NotFound();

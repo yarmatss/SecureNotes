@@ -49,12 +49,11 @@ public class EditModel : PageModel
         {
             Id = note.Id,
             Title = note.Title,
-            Content = note.IsEncrypted ? string.Empty : _markdownService.ConvertHtmlToMarkdown(note.Content), // Poka¿ treœæ tylko dla niezaszyfrowanych
+            Content = note.IsEncrypted ? string.Empty : _markdownService.ConvertHtmlToMarkdown(note.Content),
             IsEncrypted = note.IsEncrypted,
             AccessLevel = note.AccessLevel
         };
 
-        // Jeœli notatka nie jest zaszyfrowana, oznacz jako odszyfrowan¹
         if (!note.IsEncrypted)
         {
             IsDecrypted = true;

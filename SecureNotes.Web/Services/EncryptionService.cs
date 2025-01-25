@@ -19,12 +19,10 @@ public class EncryptionService : IEncryptionService
         aes.KeySize = KeySize;
         aes.BlockSize = BlockSize;
 
-        // Generuj losowe IV i sól
         aes.GenerateIV();
         byte[] salt = new byte[32];
         RandomNumberGenerator.Fill(salt);
 
-        // Derywuj klucz z hasła
         using var deriveBytes = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA256);
         aes.Key = deriveBytes.GetBytes(aes.KeySize / 8);
 

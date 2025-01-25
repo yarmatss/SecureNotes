@@ -91,7 +91,6 @@ public class RegisterModel : PageModel
             }
             var signingToken = Convert.ToBase64String(randomBytes);
 
-            // Generuj klucze używając tokena zamiast hasła
             var keyPair = await _signingService.GenerateKeyPairAsync(signingToken);
 
             user.SigningPublicKey = keyPair.publicKey;
